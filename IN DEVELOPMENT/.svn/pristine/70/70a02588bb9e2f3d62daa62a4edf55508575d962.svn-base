@@ -1,0 +1,62 @@
+﻿## Description: This powershell script is designed to run as a scheduled task. 
+##              Each time the script runs it will get a list of the virtual machines on the configured VMWare server.
+##              Owners of virtual machines which are nearing their expiration date will be informed.
+##              A list of Virtual machines, their status and expiration date will be emailed to IT.
+##
+## Author:      Simon Brown - Jan 2013
+
+
+## CONFIGURATION START ##
+
+#SMTP settings
+$smtpServer = "sbs001"
+$msgPort = 25
+$msgFrom = "it@efstechnology.com"
+
+#Reporting email address
+$adminEmail = "it@efstechnology.com"
+
+#VMware settings
+$vmServer = "vs002"
+$vmUser = "SiB"
+$vmPassword = "****"
+
+#Admin user to retain permissions
+$adminUser = "root"
+
+#Warning email
+$msgSubject = 'Your virtual machine "$VM" is about to expire'
+$msgBody = 'The virtual machine "$VM" is scheduled to expire on $expDateString.  Please contact IT if it is still required, otherwise it it will be retired.'
+
+## CONFIGURATION END ##
+
+
+#Connect to VMware Server
+Connect-VIServer -Server $vmServer -User $vmUser -Password $vmPassword
+
+#Main Process
+Get-VM | Where Notes -ne "" | ForEach-Object {
+	$expDateString = $_.Notes.Substring(0,10)
+	$expDate = Get-Date $expDateString
+	$curDate = Get-Date (Get-Date).ToShortDateString()
+	$ownerEmail = $_.Notes.Substring(11)
+	$VM = $_.Name
+	IF (($expDateString -match "[0-3][0-9]/[0-1][0-9]/\d\d\d\d") -and ($ownerEmail -match "\w*@efstechnology.com"))
+	{
+		IF ($expDate -le $curDate)
+		{
+			Shutdown-VMGuest -VM $_ -WhatIf
+			Get-VIPermission -Entity $_ | Where-Object Principal -ne $adminUser | Remove-VIPermission -WhatIf
+		}
+		ELSEIF ($expDate -le $curDate.AddDays(14))
+		{
+			Send-MailMessage -To $ownerEmail -Subject $ExecutionContext.InvokeCommand.ExpandString($msgSubject) -Body $ExecutionContext.InvokeCommand.ExpandString($msgBody) -SmtpServer $smtpServer -From $msgFrom
+		}
+	}
+	ELSE
+	{
+#		Write-Output "The VM, $_, does not contain a valid expiration date or owner."
+#		Write-Output "Please check the notes for the VM."
+		Send-MailMessage -To $adminEmail -Subject "A Problem was encountered with the VM $_." -Body "The VM, $_, does not contain a valid expiration date or owner." -SmtpServer $smtpServer -From $msgFrom
+	}
+}

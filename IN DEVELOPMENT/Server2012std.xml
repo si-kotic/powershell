@@ -1,0 +1,92 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<unattend xmlns="urn:schemas-microsoft-com:unattend">
+  <settings pass="oobeSystem">
+    <component name="Microsoft-Windows-International-Core" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <InputLocale>en-UK</InputLocale>
+      <SystemLocale>en-UK</SystemLocale>
+      <UILanguage>en-UK</UILanguage>
+      <UILanguageFallback>en-UK</UILanguageFallback>
+      <UserLocale>en-UK</UserLocale>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <OOBE>
+        <HideEULAPage>true</HideEULAPage>
+        <HideWirelessSetupInOOBE>true</HideWirelessSetupInOOBE>
+        <NetworkLocation>Work</NetworkLocation>
+        <ProtectYourPC>1</ProtectYourPC>
+        <SkipUserOOBE>true</SkipUserOOBE>
+        <HideLocalAccountScreen>true</HideLocalAccountScreen>
+        <HideOEMRegistrationScreen>true</HideOEMRegistrationScreen>
+        <HideOnlineAccountScreens>true</HideOnlineAccountScreens>
+      </OOBE>
+      <UserAccounts>
+        <AdministratorPassword>
+          <Value>QQB1AHQAbwBmAG8AcgBtADEAQQBkAG0AaQBuAGkAcwB0AHIAYQB0AG8AcgBQAGEAcwBzAHcAbwByAGQA</Value>
+          <PlainText>false</PlainText>
+        </AdministratorPassword>
+      </UserAccounts>
+      <AutoLogon>
+        <Password>
+          <Value>QQB1AHQAbwBmAG8AcgBtADEAUABhAHMAcwB3AG8AcgBkAA==</Value>
+          <PlainText>false</PlainText>
+        </Password>
+        <Enabled>true</Enabled>
+        <LogonCount>1</LogonCount>
+        <Username>administrator</Username>
+      </AutoLogon>
+      <Display>
+        <HorizontalResolution>1152</HorizontalResolution>
+        <VerticalResolution>864</VerticalResolution>
+      </Display>
+      <RegisteredOrganization>
+      </RegisteredOrganization>
+      <RegisteredOwner>
+      </RegisteredOwner>
+      <TimeZone>
+      </TimeZone>
+      <ShowWindowsLive>false</ShowWindowsLive>
+    </component>
+  </settings>
+  <settings pass="specialize">
+    <component name="Microsoft-Windows-UnattendedJoin" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <Identification>
+        <Credentials>
+          <Domain>APS-CAMBRIGE.LOCAL</Domain>
+          <Password>lemonCrusher1</Password>
+          <Username>admin_sb</Username>
+        </Credentials>
+        <JoinDomain>APS-CAMBRIGE.LOCAL</JoinDomain>
+      </Identification>
+    </component>
+    <component name="Microsoft-Windows-Shell-Setup" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <ProductKey>testprodkey</ProductKey>
+      <RegisteredOrganization>EFS</RegisteredOrganization>
+      <RegisteredOwner>Simon Brown</RegisteredOwner>
+      <ShowWindowsLive>false</ShowWindowsLive>
+      <TimeZone>GMT Standard Time</TimeZone>
+      <ComputerName>TEST2012SVR</ComputerName>
+      <CopyProfile>false</CopyProfile>
+    </component>
+  </settings>
+  <settings pass="windowsPE">
+    <component name="Microsoft-Windows-TCPIP" processorArchitecture="amd64" publicKeyToken="31bf3856ad364e35" language="neutral" versionScope="nonSxS" xmlns:wcm="http://schemas.microsoft.com/WMIConfig/2002/State" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+      <Interfaces>
+        <Interface wcm:action="add">
+          <Ipv4Settings>
+            <DhcpEnabled>True</DhcpEnabled>
+            <RouterDiscoveryEnabled>false</RouterDiscoveryEnabled>
+            <Metric>10</Metric>
+          </Ipv4Settings>
+          <UnicastIpAddresses>
+          </UnicastIpAddresses>
+          <Routes>
+          </Routes>
+          <Identifier>1</Identifier>
+        </Interface>
+      </Interfaces>
+    </component>
+    <component>
+    </component>
+  </settings>
+  <cpi:offlineImage cpi:source="wim:e:/temp/wininstalls/win2012iso/sources/install.wim#Windows Server 2012 SERVERSTANDARD" xmlns:cpi="urn:schemas-microsoft-com:cpi" />
+</unattend>

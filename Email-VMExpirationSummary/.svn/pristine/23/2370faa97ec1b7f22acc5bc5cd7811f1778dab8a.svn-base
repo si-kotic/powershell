@@ -1,0 +1,121 @@
+﻿<#
+
+.SYNOPSIS
+
+Query VMs, their power state, the VM owners and expiration dates.
+
+Written by Simon Brown (2013)
+
+.DESCRIPTION
+
+This script queries all VMs and returns their Name, Power State,
+
+VM owners and expiration dates (as set in the notes field).  A
+
+summary e-mail is then sent to IT.  If you don't pass credentials
+
+to the script, or the password file does not exist, you will be
+
+prompted for them.
+
+NB.  Requires simple.css to be stored in the same directory as the script!
+
+.PARAMETER vmuser
+
+Enter the username required to connect to the VMware Server in plain
+
+text.
+
+.PARAMETER vmpassword
+
+Specify a file containing a secure, encrypted copy of the password
+
+required to connect to the VMware server.  To generate this file run
+
+the following command:
+
+Read-Host -AsSecureString | ConvertFrom-SecureString | Out-File C:\securestring.txt
+
+.EXAMPLE
+
+& ".\Get-VMExpirationSummary.ps1" -vmUser username -vmPassword C:\securestring.txt
+
+.EXAMPLE
+
+& ".\vm status summary.ps1"
+
+#>
+
+## CONFIGURATION START ##
+Param (
+$vmUser,
+$vmPassword
+)
+
+#Load Common Functions
+. 'C:\PowerShellScripts\IN DEVELOPMENT\CommonFunctions.ps1'
+
+
+#SMTP settings
+$smtpServer = "sbs002"
+$msgPort = 25
+$msgFrom = "simonb@efstechnology.com"
+
+#Reporting email address
+$adminEmail = "simonb@efstechnology.com"
+
+#VMware settings
+$vmServer = "vs002"
+$vmCredentials = Validate-Credentials -user $vmUser -password $vmPassword
+#$vmUser = "username"
+#$vmPassword = "****"
+
+#Email
+$msgSubject = 'Virtual Machine Expiration Summary'
+$msgBody = 'Please find below the summary of Virtual Machine expirations and power states:'
+$css = (Split-Path $MyInvocation.MyCommand.Path) + "\simple.css"
+
+## CONFIGURATION END ##
+
+#Connect to VMware Server
+Connect-VIServer -Server $vmServer -Credential $vmCredentials
+
+#Create Table
+$table = New-Object system.Data.DataTable “FolderACLs”
+
+$col1 = New-Object system.Data.DataColumn vmName,([string])
+$col2 = New-Object system.Data.DataColumn powerStatus,([string])
+$col3 = New-Object system.Data.DataColumn expiryDate,([string])
+$col4 = New-Object system.Data.DataColumn vmOwner,([string])
+$col5 = New-Object system.Data.DataColumn resourcePool,([string])
+
+$table.columns.add($col1)
+$table.columns.add($col2)
+$table.columns.add($col3)
+$table.columns.add($col4)
+$table.columns.add($col5)
+
+#Main Process
+Get-VM | ForEach-Object {
+	$row = $table.NewRow()
+	$row.vmName = $_.Name
+	$row.powerStatus = $_.PowerState
+	$row.expiryDate = Get-VMExpirationDate -VM $_
+	$row.vmOwner = Get-VMOwnerEmail -VM $_
+	$row.resourcePool = $_.ResourcePool.Name
+	$table.rows.add($row)
+}
+
+#Send-MailMessage -To $adminEmail -From $msgFrom -SmtpServer $smtpServer -Subject $msgSubject -BodyAsHTML ($table | Select-Object vmName,powerStatus,expiryDate,vmOwner | ConvertTo-Html -PreContent $msgBody -CssUri $css| Out-String)
+Send-MailMessage -To $adminEmail -From $msgFrom -SmtpServer $smtpServer -Subject $msgSubject -BodyAsHTML ($msgbody + (Get-ResourcePool | Foreach {$table | where resourcePool -eq $_.Name | Select-Object vmName,powerStatus,expiryDate,vmOwner | ConvertTo-Html -PreContent ("<H3>" + $_.Name + ":</H3>") -CssUri $css} | out-string))
+<#  CSV Functionality retained in case required.
+IF (!(Test-Path "C:\Temp\")) {New-Item -Name "Temp" -Path C:\ -ItemType Directory -Force}
+$table | Export-Csv C:\Temp\vmExpirationSummary.csv
+$csv = Get-Content C:\Temp\vmExpirationSummary.csv
+$csv[1..$csv.Count] | Set-Content C:\Temp\vmExpirationSummary.csv
+Send-MailMessage -To $adminEmail -From $msgFrom -SmtpServer $smtpServer -Subject $msgSubject -Body $msgBody -Attachments C:\Temp\vmExpirationSummary.csv
+Remove-Item -Path C:\Temp\vmExpirationSummary.csv -Force
+#>
+
+#Disconnect from VMware Server
+Disconnect-VIServer -Server $vmServer -Confirm:$false

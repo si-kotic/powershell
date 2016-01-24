@@ -1,0 +1,97 @@
+﻿<#
+
+.SYNOPSIS
+
+Query VM owners and expiration dates.
+
+Written by Simon Brown (2013)
+
+.DESCRIPTION
+
+This script queries the VM owners and expiration dates (as set in the
+
+notes field) and informs the owner if the expiration date is less than
+
+14 days in the future.
+
+NB. Although this is intended to be run on a schedule, the credential
+
+mechanism currently prevents this.
+
+.PARAMETER vmcredentials
+
+Use Get-Credential to prompt for your VMware credentials.  You can either
+
+pipe this to the command or specify Get-Credentials as the value of the
+
+parameter.
+
+.EXAMPLE
+
+Get-Credential | & ".\remove expired vms.ps1"
+
+.EXAMPLE
+
+& ".\remove expired vms.ps1" -vmCredentials (Get-Credential)
+
+#>
+
+## CONFIGURATION START ##
+Param (
+[Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=1)]$vmCredentials)
+
+#SMTP settings
+$smtpServer = "sbs002"
+$msgPort = 25
+$msgFrom = "simonb@efstechnology.com"
+
+#Reporting email address
+$adminEmail = "it@efstechnology.com"
+
+#VMware settings
+$vmServer = "vs002"
+#$vmCredentials = Get-Credential
+#$vmUser = "SiB"
+#$vmPassword = "****"
+
+#Admin user to retain permissions
+$adminUser = "root"
+
+#Warning email
+$msgSubject = 'Your virtual machine "$VM" is about to expire'
+$msgBody = 'The virtual machine "$VM" is scheduled to expire on $expDateString.  Please contact IT if it is still required, otherwise it it will be retired.'
+
+## CONFIGURATION END ##
+
+
+#Connect to VMware Server
+Connect-VIServer -Server $vmServer -Credential $vmCredentials #-User $vmUser -Password $vmPassword
+
+#Main Process
+Get-VM | Where Notes -ne "" | ForEach-Object {
+	#$expDateString = $_.Notes.Substring(0,10)
+	$expDateString = (Select-String -InputObject $_.Notes -Pattern "^*expiry_date=[0-3][0-9]/[0-1][0-9]/\d{4}").Matches.Value.TrimStart("expiry_date=")
+	$expDate = Get-Date $expDateString
+	$curDate = Get-Date (Get-Date).ToShortDateString()
+	#$ownerEmail = $_.Notes.Substring(11)
+	$ownerEmail = (Select-String -InputObject $_.notes -Pattern "^*contact=\w*\W\w*.co[.\w*]\w*").Matches.Value.TrimStart("contact=")
+	$VM = $_.Name
+	IF ($expDateString -and $ownerEmail)
+	{
+		IF ($expDate -le $curDate)
+		{
+			Shutdown-VMGuest -VM $_ -WhatIf
+			Get-VIPermission -Entity $_ | Where-Object Principal -ne $adminUser | Remove-VIPermission -WhatIf
+		}
+		ELSEIF ($expDate -le $curDate.AddDays(14))
+		{
+			Send-MailMessage -To $ownerEmail -Subject $ExecutionContext.InvokeCommand.ExpandString($msgSubject) -Body $ExecutionContext.InvokeCommand.ExpandString($msgBody) -SmtpServer $smtpServer -From $msgFrom
+		}
+	}
+	ELSE
+	{
+#		Write-Output "The VM, $_, does not contain a valid expiration date or owner."
+#		Write-Output "Please check the notes for the VM."
+		Send-MailMessage -To $adminEmail -Subject "A Problem was encountered with the VM $_." -Body "The VM, $_, does not contain a valid expiration date or owner." -SmtpServer $smtpServer -From $msgFrom
+	}
+}

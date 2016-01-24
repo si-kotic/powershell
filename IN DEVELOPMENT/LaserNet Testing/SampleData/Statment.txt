@@ -1,0 +1,50 @@
+
+                                              Account Number : 13498
+                                              Account Type :   Current Account with Overdraft
+  EFS Technology Limited                      Currency :       Pound Sterling
+  2 Burlington Park                           Statement Date : 15 NOV 2011
+  Station Road                                Page :                          1
+  Foxton                                      Joint Holders :  Mr Thomas Hurrion
+  Cambridgeshire                              Country:         UK
+  SB22 6SA                                    Email:           zacka@efstechnology.com
+
+
+
+
+
+
+
+
+
+04 SEP 2009 04 SEP 2009 TT0924787KPW                       6,250.00                               6,250.00
+                        Cash Deposit
+                        LCY depd in FCY acct
+04 SEP 2009 04 SEP 2009 TT092479N9XF                      30,000.00                              36,250.00
+                        Cash Deposit
+                        FCY deposited
+04 SEP 2009 04 SEP 2009 TT09247FKWPS                      50,000.00                              86,250.00
+                        Cash Deposit
+                        FCY deposited
+04 SEP 2009 04 SEP 2009 TT09247KM20V                                          -769.23            85,480.77
+                        Cash Withdrawal
+                        LCY withdrawn from FCY
+04 SEP 2009 04 SEP 2009 TT092478T38W                                        -1,500.00            83,980.77
+                        Cash Withdrawal
+                        FCY withdrawn
+07 SEP 2009 07 SEP 2009 SCTRSC09250ZL0PF                                      -590.87            83,389.90
+                        Securities Purchase
+                        500 - UK GOVT TRES 4 Pct 2016
+10 SEP 2009 10 SEP 2009 DXTRA0925000018                                     -1,125.00            82,264.90
+                        Futures Variation DB
+                        VARIATION MARGIN
+10 SEP 2009 10 SEP 2009 DXTRA0924700006                                       -375.00            81,889.90
+                        Futures Variation DB
+                        VARIATION MARGIN
+07 SEP 2009 07 SEP 2009 DXTRA0924700006                       75.00                              81,964.90
+                        Futures Variations Margin CR
+                        VARIATION MARGIN
+
+                        Total Deposits :                                                        159,800.10
+                        Total Withdrawals:                                                      -90,271.11
+
+                        Closing Balance :                                                        69,528.99

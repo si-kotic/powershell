@@ -1,0 +1,16 @@
+﻿$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+
+if (!($currentPrincipal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )))
+    {
+        (get-host).UI.RawUI.Backgroundcolor="DarkRed"
+        clear-host
+        write-host "WARNING: POWERSHELL IS NOT RUNNING AS AN ELEVATED SESSION!"
+    }
+else
+{
+	function prompt{
+		"ADMIN " + $(Get-Location) + ">"
+	}
+}
+
+Import-Module -Name EFSTechnology

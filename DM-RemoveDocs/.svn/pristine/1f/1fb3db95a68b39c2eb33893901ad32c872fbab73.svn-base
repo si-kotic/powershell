@@ -1,0 +1,242 @@
+﻿<#
+.SUMMARY
+Remove all documents of a given document definition from Autoform|DM.
+Will remove all records from DB and files from filesystem.
+
+Written by Simon Brown (2013)
+
+.DESCRIPTION
+Specify the name of a document defintion defined within Autoform|DM
+to remove ALL documents assiociated with it.
+Default SQL parameters are supplied and the script assumes DM and SQL
+are installed locally and that SQLExpress is being used.
+If your setup differs from this, use the parameters to change these
+details.
+
+PLEASE NOTE: If Autoform|DM is on a different server to SQL, you must
+run this from the SQL server and ensure that WinRM is enabled on the
+Autoform|DM Server.  To enable WinRM, launch PowerShell as an Administrator
+on the DM server, run "winrm quickconfig", press 'y' when prompted.
+
+.PARAMTER doctype
+Specify the name of the Document Definition defined within Autoform|DM for
+which you want to remove the documents.
+
+.PARAMETER dmserver
+Specify the server running Autoform|DM if it is not the same as the SQL
+Server. Ensure that the script is run from the SQL Server, or a server
+running SQL Management Studio.
+
+.PARAMETER serverinstance
+Specify the SQL Server instance name. By default this value is
+LOCALHOST\SQLEXPRESS.
+
+.PARAMETER database
+Specify the name of the Autoform|DM database. By default this value is AFPDM.
+
+.PARAMETER username
+Specify the username for the Autoform|DM database.
+By default this value is 'pdm'.
+
+.PARAMETER password
+Specify the password for the Autoform|DM database.
+By default this value is 'pdm'.
+
+.EXAMPLE
+& .\DM-RemoveDocs.ps1 -docType "testdocs"
+You have requested to remove all documents in the Document Definition 'testdocs'
+
+Records to be removed:
+tblNoteChunkData: 0 records.
+tblNoteData: 0 records.
+tblDocuments: 11641 records.
+tblHistoricNoteChunkData: 0 records.
+tblHistoricNoteData: 0 records.
+tblDocumentHistory: 0 records.
+
+Files in file system:  11641 files
+
+
+Are you sure you want to remove these documents? y/n
+Deleting SQL records and files...
+
+.EXAMPLE
+& .\DM-RemoveDocs.ps1 -docType "testdocs" -dmServer "DM01"
+You have requested to remove all documents in the Document Definition 'testdocs'
+
+Records to be removed:
+tblNoteChunkData: 0 records.
+tblNoteData: 0 records.
+tblDocuments: 11641 records.
+tblHistoricNoteChunkData: 0 records.
+tblHistoricNoteData: 0 records.
+tblDocumentHistory: 0 records.
+
+Files in file system:  11641 files
+
+
+Are you sure you want to remove these documents? y/n
+Deleting SQL records and files...
+
+#>
+Param (
+$docType,
+$dmServer,
+$ServerInstance = "LOCALHOST\SQLEXPRESS",
+$Database = "AFPDM",
+$UserName = "pdm",
+$Password = "pdm"
+)
+$archivePath = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query "SELECT * FROM tblArchiveDirectories")[0].Path
+IF (!$docType -or !$archivePath)
+{
+	IF (!$docType)
+	{
+		Write-Verbose -Message "docType NOT SPECIFIED"
+		Write-Output "You must specify a docType!"
+	}
+	IF (!(Test-Path $archivePath))
+	{
+		Write-Verbose -Message "$archivePath DOESN'T EXIST ON THIS SERVER.  IF AUTOFORM|DM IS INSTALLED ON A DIFFERENT SERVER"
+		Write-Verbose -Message "YOU WILL NEED TO SPECIFY THE dmServer PARAMETER. PLEASE CONSULT HELP BEFORE DOING THIS!"
+	}
+}
+ELSE
+{
+	Write-Verbose -Message "CHECKING SQL CONNECTION DETAILS"
+	$sqlConnectionTest = $true
+	TRY {
+		Write-Verbose -Message "TESTING SQL CONNECTION DETAILS"
+		$null = Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query "SELECT docTypeID FROM tblDocTypes"
+	}
+	CATCH {
+		Write-Verbose -Message "SQL CONNECTION FAILED!"
+		$sqlConnectionTest = $false
+	}
+	IF (!$sqlConnectionTest)
+	{
+		"Please check your SQL Connection details as the connection to the SQL Server was rejected."
+	}
+	ELSE
+	{
+		#Get DocID based on DocTypeName
+		Write-Verbose -Message "RETRIEVE docTypeID BASED ON SPECIFIED DOCUMENT DEFINITION NAME"
+		$docTypeID = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query "SELECT docTypeID FROM tblDocTypes WHERE docTypeName='$docType'").docTypeID
+		#Get list of document filenames to remove from filesystem
+		Write-Verbose -Message "RETRIEVE LIST OF FILENAMES FOR REMOVAL FROM FILESYSTEM"
+		$docsToRemove = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT CAST(docID AS VARCHAR(100)) + '_' + CAST(fileVersion AS VARCHAR(100)) + '.' + fileType AS fileName
+		FROM tblDocuments
+		WHERE docTypeID = '$docTypeID'
+		UNION
+		SELECT CAST(docID AS VARCHAR(100)) + '_' + CAST(fileVersion AS VARCHAR(100)) + '.' + fileType AS fileName
+		FROM tblDocumentHistory
+		WHERE docTypeID = '$docTypeID'
+"@).FileName
+		#Determine which records are to be removed from the DB and give the user the chance to bottle it!
+		Write-Verbose -Message "CALCULATE QUANTITY OF RECORDS TO BE REMOVED FROM EACH TABLE IN DATABASE"
+		$noteChunkData = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblNoteChunkData
+		WHERE noteId IN (	SELECT noteId
+							FROM tblDocuments
+							WHERE docTypeID = '$docTypeID')
+"@).Count
+		$notedata = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblNoteData
+		WHERE noteId IN (	SELECT noteId
+							FROM tblDocuments
+							WHERE docTypeID = '$docTypeID')
+"@).Count
+		$documents = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblDocuments
+		WHERE docTypeID = '$docTypeID'
+"@).Count
+		$historicNoteChunkData = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblHistoricNoteChunkData
+		WHERE noteId IN (	SELECT noteId
+							FROM tblDocumentHistory
+							WHERE docTypeID = '$docTypeID')
+"@).Count
+		$historicNoteData = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblHistoricNoteData
+		WHERE noteId IN (	SELECT noteId
+							FROM tblDocumentHistory
+							WHERE docTypeID = '$docTypeID')
+"@).Count
+		$documentHistory = (Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+		SELECT * FROM tblDocumentHistory
+		WHERE docTypeID = '$docTypeID'
+"@).Count
+		$docsToRemoveCount = $docsToRemove.Count
+		Write-Output @"
+You have requested to remove all documents in the Document Definition '$docType' `n
+Records to be removed:
+tblNoteChunkData: $noteChunkData records.
+tblNoteData: $noteData records.
+tblDocuments: $documents records.
+tblHistoricNoteChunkData: $historicNoteChunkData records.
+tblHistoricNoteData: $historicNoteData records.
+tblDocumentHistory: $documentHistory records. `n
+Files in file system:  $docsToRemoveCount files `n`n
+"@
+		Write-Output "Are you sure you want to remove these documents? y/n"
+		IF ($host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown").Character -eq "y")
+		{
+			Write-Verbose -Message "USER HAS CONFIRMED REMOVAL OF RECORDS AND FILES"
+			Write-Output "Deleting SQL records and files..."
+			#Remove documents from Database.
+			Write-Verbose -Message "DELETING RECORDS FROM DATABASE"
+			Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query @"
+			DELETE FROM tblNoteChunkData
+			WHERE noteId IN (	SELECT noteId
+								FROM tblDocuments
+								WHERE docTypeID = '$docTypeID')
+			DELETE FROM tblNoteData
+			WHERE noteId IN (	SELECT noteId
+								FROM tblDocuments
+								WHERE docTypeID = '$docTypeID')
+			DELETE FROM tblDocuments
+			WHERE docTypeID = '$docTypeID'
+			DELETE FROM tblHistoricNoteChunkData
+			WHERE noteId IN (	SELECT noteId
+								FROM tblDocumentHistory
+								WHERE docTypeID = '$docTypeID')
+			DELETE FROM tblHistoricNoteData
+			WHERE noteId IN (	SELECT noteId
+								FROM tblDocumentHistory
+								WHERE docTypeID = '$docTypeID')
+			DELETE FROM tblDocumentHistory
+			WHERE docTypeID = '$docTypeID'
+"@
+			IF ($dmServer)
+			{
+				New-PSSession $dmServer | Enter-PSSession
+			}
+			Set-Location $archivePath
+			Write-Verbose -Message "DELETING FILES FROM FILESYSTEM"
+			$docsToRemove | ForEach-Object {
+				$curDoc = Invoke-Sqlcmd -ServerInstance $ServerInstance -Database $Database -Username $UserName -Password $Password -Query "SELECT * FROM tblDocuments WHERE docID = '$_'"
+				$year = $curDoc.fileArchived.toString().split("/")[-1].split(" ")[0]
+                $month = $curDoc.fileArchived.toString().split("/")[1]
+                $day = $curDoc.fileArchived.toString().split("/")[0]
+                $hour = $curDoc.fileArchived.toString().split("/")[-1].split(" ")[-1].split(":")[0]
+                $filename = $curDoc.docID.toString() + "_" + $_.fileVersion.toString() + "." + $_.fileType
+                $filePath = $archiveDir + "\" + $year + "\" + $month + "\" + $day + "\" + $hour + "\" + $filename
+				#$filename = $_
+				#Get-ChildItem -Recurse | Where {$_.Name -eq $filename} | ForEach-Object {Remove-Item -Path $_.FullName -Force}
+				Remove-Item -Path $filePath -Force
+			}
+			IF ($dmServer)
+			{
+				Exit-PSSession
+			}
+		}
+		ELSE
+		{
+			Write-Verbose -Message "USER HAS REJECTED REMOVAL OF RECORDS AND FILES"
+			Write-Output "You have chosen to abort the deletion of the SQL records and files!"
+		}
+	}
+}
+
+

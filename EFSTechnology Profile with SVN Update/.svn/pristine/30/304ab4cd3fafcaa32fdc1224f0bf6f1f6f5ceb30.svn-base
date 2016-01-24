@@ -1,0 +1,36 @@
+﻿$currentPrincipal = New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())
+
+if (!($currentPrincipal.IsInRole( [Security.Principal.WindowsBuiltInRole]::Administrator )))
+    {
+        (get-host).UI.RawUI.Backgroundcolor="DarkRed"
+        clear-host
+        write-host "WARNING: POWERSHELL IS NOT RUNNING AS AN ELEVATED SESSION!"
+    }
+else
+{
+	function prompt{
+		"ADMIN " + $(Get-Location) + ">"
+	}
+}
+
+$answer = ""
+Set-Location "$home\Documents\WindowsPowerShell\Modules\EFSTechnology"
+IF ((& 'C:\Program Files\TortoiseSVN\bin\svn.exe' status -u)[0][8] -eq "*")
+{
+	Write-Output "A new version of the EFSTechnology Module is available!"
+	Write-Output "Would you like to update to the latest version? y/n"
+	$answer = $host.UI.RawUI.ReadKey("NoEcho,IncludeKeyDown")
+	IF ($answer.Character -eq "y")
+	{
+		& 'C:\Program Files\TortoiseSVN\bin\svn.exe' up .\EFSTechnology.psm1
+	}
+}
+
+Set-Location $home
+
+Import-Module -Name EFSTechnology
+New-PSDrive -Name I -PSProvider FileSystem -Root \\nas1\it\
+New-PSDrive -Name P -PSProvider FileSystem -Root \\nas1\projects\
+New-PSDrive -Name R -PSProvider FileSystem -Root \\randd\releases\
+New-PSDrive -Name S -PSProvider FileSystem -Root \\nas1\support\
+New-PSDrive -Name U -PSProvider FileSystem -Root \\nas1\users\

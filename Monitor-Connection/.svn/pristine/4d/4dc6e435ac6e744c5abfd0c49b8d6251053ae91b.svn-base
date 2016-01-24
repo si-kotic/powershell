@@ -1,0 +1,60 @@
+﻿
+Function Monitor-Connection {
+[CmdletBinding(SupportsShouldProcess=$true)]
+Param (
+[Parameter(Mandatory=$true,ValueFromPipeline=$false,Position=1)][string]$Computer,
+[int32]$ResponseThreshold = 500,
+[int32]$FailureThreshold = 5,
+[string]$mailTo = $env:USERNAME + "@" + $env:USERDNSDOMAIN, #"simonb@efstechnology.com",
+[string]$mailFrom = "IT@EFSTechnology.com",
+[string]$mailServer = "sbs001.aps-cambridge.local"
+)
+
+Write-Verbose -Message "SET count, threshold, maxresponse AND pingdest VARIABLES"
+$count = 0
+$threshold = $FailureThreshold
+$maxResponse = $ResponseThreshold
+$pingDest = $Computer
+
+
+
+While ($count -lt $threshold) {
+	Write-Verbose -Message "PING $pingDest"
+	$ping = Test-Connection $pingDest -Count 1
+	IF (($ping.ResponseTime -gt $maxResponse) -or (!$ping))
+	{
+		$count ++
+		IF ($ping)
+		{
+			Write-Verbose -Message "PING TOOK TOO LONG TO RESPOND"
+			$mailSubject = ("Firewall took " + $ping.responsetime + "ms to respond")
+		}
+		ELSE
+		{
+			Write-Verbose -Message "PING FAILURE!"
+			$mailSubject = "Firewall failed to respond to a PING request"
+		}
+		Write-Verbose -Message "SEND MAIL MESSAGE"
+		Send-MailMessage -To $mailTo -Subject $mailSubject -Body ("The Firewall has failed to respond, or failed to respond within a reasonable time.  This has happened $count time(s) in the last 60 seconds.") -Priority High -SmtpServer $mailServer -From $mailFrom
+		$lastFail = Get-Date
+		$ping | Export-Csv -Path E:\Temp\pingscript.csv -Append
+		Write-Output $ping
+	}
+	ELSE
+	{
+		IF ($lastFail -lt (Get-Date).AddSeconds(-60))
+		{
+			Write-Verbose -Message "LAST FAILURE WAS MORE THAN 60 SECONDS AGO.  RESETTING COUNTER."
+			$count = 0
+		}
+	}
+	IF ($count -eq ($threshold-1))
+	{
+		Write-Verbose -Message "COUNTER THRESHOLD REACHED.  SENDING MAIL MESSAGE AND TERMINATING SCRIPT"
+		Send-MailMessage -To $mailTo -Subject ("Firewall Issue!") -Body ("The script has terminated because there is an issue with the firewall which needs to be investigated immediately!") -Priority High -SmtpServer $mailServer -From $mailFrom
+	}
+}
+}
+
+#	Quick Gauge of Avg Response Time
+#Test-Connection 192.168.100.253 -Count 20 | foreach {$cnt++; $time = $time + $_.ResponseTime; Write-Output ("Average Response Time: " + $time/$cnt)}

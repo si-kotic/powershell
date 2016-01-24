@@ -1,0 +1,38 @@
+﻿<#
+
+.SYNOPSIS
+
+Common Functions
+
+#>
+
+Function Get-vmOwnerEmail {
+Param (
+[Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=1)]$VM
+)
+#(Select-String -InputObject $VM.notes -Pattern "^*contact=\w*\W\w*.co[.\w*]\w*").Matches.Value.TrimStart("contact=")
+(Select-String -InputObject $VM.notes -Pattern "^*contact=\w*\W\w*.co[.\w*]\w*").Matches.Value.Substring(8)
+}
+
+Function Get-vmExpirationDate {
+Param (
+[Parameter(Mandatory=$true,ValueFromPipeline=$true,Position=1)]$VM
+)
+(Select-String -InputObject $VM.Notes -Pattern "^*expiry_date=[0-3][0-9]/[0-1][0-9]/\d{4}").Matches.Value.TrimStart("expiry_date=")
+}
+
+Function Validate-Credentials {
+Param (
+$user,
+$password
+)
+IF (!$Password -or !$User -or !(Test-Path $Password))
+{
+	Get-Credential
+}
+ELSE
+{
+	$pass = Get-Content $Password | ConvertTo-SecureString
+	New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $User,$pass
+}
+}
